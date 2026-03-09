@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Intelli-Credit — AI Credit Decisioning</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f0f2f5;
+      font-size: .93rem
+    }
+
+    .navbar {
+      background: linear-gradient(135deg, #1a237e, #0d47a1)
+    }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, .08)
+    }
+
+    .score-ring {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 auto .8rem
+    }
+
+    .ring-good {
+      background: #2e7d32
+    }
+
+    .ring-warn {
+      background: #f57f17
+    }
+
+    .ring-bad {
+      background: #c62828
+    }
+
+    .flag-HIGH {
+      background: #ffebee;
+      border-left: 4px solid #c62828;
+      padding: 6px 10px;
+      margin-bottom: 6px;
+      border-radius: 4px
+    }
+
+    .flag-MEDIUM {
+      background: #fff8e1;
+      border-left: 4px solid #f57f17;
+      padding: 6px 10px;
+      margin-bottom: 6px;
+      border-radius: 4px
+    }
+
+    .flag-LOW {
+      background: #e8f5e9;
+      border-left: 4px solid #2e7d32;
+      padding: 6px 10px;
+      margin-bottom: 6px;
+      border-radius: 4px
+    }
+
+    .ratio-box {
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      border: 1px solid #e0e0e0
+    }
+
+    .ratio-val {
+      font-size: 1.3rem;
+      font-weight: 700
+    }
+
+    .rv-good {
+      color: #2e7d32
+    }
+
+    .rv-warn {
+      color: #f57f17
+    }
+
+    .rv-bad {
+      color: #c62828
+    }
+
+    .rv-na {
+      color: #9e9e9e
+    }
+
+    .dec-APPROVE {
+      background: #e8f5e9;
+      border: 2px solid #2e7d32
+    }
+
+    .dec-CONDITIONAL {
+      background: #fff8e1;
+      border: 2px solid #f57f17
+    }
+
+    .dec-DECLINE {
+      background: #ffebee;
+      border: 2px solid #c62828
+    }
+
+    .case-item:hover {
+      background: #e3f2fd;
+      cursor: pointer
+    }
+
+    .driver-bar {
+      height: 6px;
+      border-radius: 3px
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav class="navbar navbar-dark py-2">
+    <div class="container-fluid">
+      <span class="navbar-brand fw-bold fs-5"><i class="bi bi-bank2"></i> Intelli-Credit</span>
+      <span class="text-white-50 small d-none d-md-block">AI-Powered Credit Decisioning Engine</span>
+      <button class="btn btn-outline-light btn-sm" onclick="loadCases()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+  </nav>
+
+  <div class="container-fluid py-3">
+    <div class="row g-3">
+
+      <!-- Sidebar -->
+      <div class="col-md-3 col-lg-2">
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-2"><i class="bi bi-folder2"></i> Cases</h6>
+          <button class="btn btn-primary btn-sm w-100 mb-2" onclick="showNew()">
+            <i class="bi bi-plus-circle"></i> New Case
+          </button>
+          <div id="caseList">
+            <div class="text-muted small">Loading…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main -->
+      <div class="col-md-9 col-lg-10">
+
+        <!-- New Case -->
+        <div id="panelNew" class="card p-4 mb-3" style="display:none">
+          <h5 class="fw-bold mb-3"><i class="bi bi-building-add"></i> Create New Case</h5>
+          <div class="row g-3">
+            <div class="col-md-5">
+              <label class="form-label fw-semibold">Company Name *</label>
+              <input id="inName" type="text" class="form-control" placeholder="e.g. Acme Industries Ltd">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">CIN</label>
+              <input id="inCIN" type="text" class="form-control" placeholder="U12345MH2010PLC123456">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-success w-100" onclick="createCase()">
+                <i class="bi bi-check-circle"></i> Create
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Case Panel -->
+        <div id="panelCase" style="display:none">
+
+          <!-- Header -->
+          <div class="card p-3 mb-3 d-flex flex-row justify-content-between align-items-center">
+            <div>
+              <h5 class="fw-bold mb-0" id="caseTitle">—</h5>
+              <small class="text-muted" id="caseSub">—</small>
+            </div>
+            <div class="d-flex gap-2">
+              <span id="stageBadge" class="badge bg-secondary">—</span>
+              <button class="btn btn-outline-secondary btn-sm" onclick="refreshCase()">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+              <a class="nav-link active" data-bs-toggle="tab" href="#tDocs">
+                <i class="bi bi-file-earmark-pdf"></i> Documents
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-bs-toggle="tab" href="#tInsights">
+                <i class="bi bi-person-check"></i> Site Visit
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-bs-toggle="tab" href="#tResults">
+                <i class="bi bi-graph-up"></i> Results
+              </a>
+            </li>
+          </ul>
+
+          <div class="tab-content">
+
+            <!-- Documents Tab -->
+            <div class="tab-pane fade show active" id="tDocs">
+              <div class="card p-4">
+                <h6 class="fw-bold mb-3">Upload Documents</h6>
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-4">
+                    <label class="form-label">Document Type</label>
+                    <select id="docType" class="form-select">
+                      <option value="annual_report">Annual Report</option>
+                      <option value="bank_statement">Bank Statement</option>
+                      <option value="gst_filing">GST Filing</option>
+                      <option value="itr">ITR</option>
+                      <option value="rating_report">Rating Report</option>
+                      <option value="mca_filing">MCA Filing</option>
+                      <option value="legal_notice">Legal Notice</option>
+                      <option value="board_minutes">Board Minutes</option>
+                      <option value="sanction_letter">Sanction Letter</option>
+                      <option value="shareholding_pattern">Shareholding Pattern</option>
+                    </select>
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label">File (PDF)</label>
+                    <input id="docFile" type="file" class="form-control" accept=".pdf">
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-primary w-100" onclick="uploadDoc()">
+                      <i class="bi bi-upload"></i> Upload
+                    </button>
+                  </div>
+                </div>
+                <div id="docList" class="mt-3"></div>
+                <hr>
+                <div class="text-center">
+                  <button class="btn btn-success btn-lg px-5" onclick="startAnalysis()">
+                    <i class="bi bi-cpu"></i> Run AI Analysis
+                  </button>
+                  <div class="text-muted small mt-1">Runs all 8 pipeline stages (~2–5 min)</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Site Visit Tab -->
+            <div class="tab-pane fade" id="tInsights">
+              <div class="card p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-binoculars"></i> Site Visit &amp; Management Interview</h6>
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Capacity Utilisation Observed (%)</label>
+                    <input id="piCapObs" type="number" class="form-control" placeholder="40">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Capacity Utilisation Reported (%)</label>
+                    <input id="piCapRep" type="number" class="form-control" placeholder="85">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Workers Observed</label>
+                    <input id="piWorkers" type="number" class="form-control" placeholder="120">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Machinery Condition</label>
+                    <select id="piMachine" class="form-select">
+                      <option value="">Not assessed</option>
+                      <option value="good">Good</option>
+                      <option value="fair">Fair</option>
+                      <option value="poor">Poor</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Inventory</label>
+                    <select id="piInv" class="form-select">
+                      <option value="">Not assessed</option>
+                      <option value="adequate">Adequate</option>
+                      <option value="excess">Excess</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Mgmt Response Quality</label>
+                    <select id="piMgmt" class="form-select">
+                      <option value="">Not assessed</option>
+                      <option value="transparent">Transparent</option>
+                      <option value="adequate">Adequate</option>
+                      <option value="evasive">Evasive</option>
+                      <option value="poor">Poor</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Succession Plan</label>
+                    <select id="piSucc" class="form-select">
+                      <option value="">Unknown</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Promoter Skin-in-Game</label>
+                    <input id="piSkin" type="text" class="form-control"
+                      placeholder="e.g. 40% personal guarantee on total exposure">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Additional Observations</label>
+                    <textarea id="piObs" class="form-control" rows="2"
+                      placeholder="Any qualitative findings from site visit..."></textarea>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <button class="btn btn-primary" onclick="saveInsights()">
+                    <i class="bi bi-save"></i> Save Site Visit Data
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Results Tab -->
+            <div class="tab-pane fade" id="tResults">
+              <div id="resultsContent">
+                <div class="text-center text-muted py-5">
+                  <i class="bi bi-hourglass-split fs-1"></i>
+                  <p class="mt-2">Run AI Analysis to see results</p>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- tab-content -->
+        </div><!-- panelCase -->
+
+        <!-- Welcome -->
+        <div id="panelWelcome" class="card p-5 text-center">
+          <i class="bi bi-bank2 display-1 text-primary"></i>
+          <h3 class="mt-3 fw-bold">Welcome to Intelli-Credit</h3>
+          <p class="text-muted">AI-powered credit decisioning for Indian corporate lending.<br>
+            Create a new case or select an existing one from the sidebar.</p>
+          <button class="btn btn-primary btn-lg mt-2" onclick="showNew()">
+            <i class="bi bi-plus-circle"></i> Create First Case
+          </button>
+        </div>
+
+      </div><!-- col main -->
+    </div><!-- row -->
+  </div><!-- container -->
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const API = "";
+    let currentCaseId = null;
+    let pollTimer = null;
+
+    // ── Case List ─────────────────────────────────────────────────────────────────
+    async function loadCases() {
+      const res = await fetch(`${API}/api/cases`);
+      const cases = await res.json();
+      const el = document.getElementById("caseList");
+      if (!cases.length) {
+        el.innerHTML = '<div class="text-muted small">No cases yet</div>';
+        return;
+      }
+      el.innerHTML = cases.map(c => `
+    <div class="case-item p-2 rounded mb-1 small ${c.case_id === currentCaseId ? 'bg-primary-subtle' : ''}"
+         onclick="openCase('${c.case_id}')">
+     <div class="fw-semibold text-truncate">${c.company_name}</div>
+     <div class="text-muted" style="font-size:.75rem">${stageBadgeHtml(c.stage)}</div>
+    </div>`).join("");
+    }
+
+    function stageBadgeHtml(stage) {
+      const colors = {
+        CREATED: "secondary", INGESTING: "info", EXTRACTING: "info",
+        VALIDATING: "info", RESEARCHING: "warning", PRIMARY_INSIGHTS: "warning",
+        SCORING: "warning", DECIDING: "warning", GENERATING_CAM: "warning",
+        COMPLETE: "success", ERROR: "danger"
+      };
+      return `<span class="badge bg-${colors[stage] || 'secondary'}">${stage}</span>`;
+    }
+
+    // ── New Case ──────────────────────────────────────────────────────────────────
+    function showNew() {
+      document.getElementById("panelNew").style.display = "";
+      document.getElementById("panelCase").style.display = "none";
+      document.getElementById("panelWelcome").style.display = "none";
+    }
+
+    async function createCase() {
+      const name = document.getElementById("inName").value.trim();
+      if (!name) { alert("Company name is required"); return; }
+      const cin = document.getElementById("inCIN").value.trim();
+      const res = await fetch(`${API}/api/cases`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company_name: name, company_cin: cin })
+      });
+      const data = await res.json();
+      document.getElementById("panelNew").style.display = "none";
+      await loadCases();
+      openCase(data.case_id);
+    }
+
+    // ── Open Case ─────────────────────────────────────────────────────────────────
+    async function openCase(caseId) {
+      currentCaseId = caseId;
+      clearInterval(pollTimer);
+      document.getElementById("panelWelcome").style.display = "none";
+      document.getElementById("panelNew").style.display = "none";
+      document.getElementById("panelCase").style.display = "";
+      await refreshCase();
+      loadCases();
+    }
+
+    async function refreshCase() {
+      if (!currentCaseId) return;
+      const res = await fetch(`${API}/api/cases/${currentCaseId}`);
+      const data = await res.json();
+      document.getElementById("caseTitle").textContent = data.company_name;
+      document.getElementById("caseSub").textContent =
+        `Case: ${data.case_id.substring(0, 8)}… | Created: ${data.created_at?.substring(0, 10) || '—'}`;
+      document.getElementById("stageBadge").innerHTML = stageBadgeHtml(data.pipeline_stage);
+
+      // Render document list
+      const docs = data.raw_documents || {};
+      document.getElementById("docList").innerHTML = Object.keys(docs).length
+        ? Object.entries(docs).map(([t, p]) =>
+          `<div class="d-flex align-items-center gap-2 mb-1">
+           <i class="bi bi-file-earmark-pdf text-danger"></i>
+           <span class="badge bg-light text-dark border">${t}</span>
+           <span class="text-muted small text-truncate">${p.split(/[\\/]/).pop()}</span>
+         </div>`).join("")
+        : '<div class="text-muted small">No documents uploaded yet</div>';
+
+      // Auto-poll while running
+      const running = !["CREATED", "COMPLETE", "ERROR"].includes(data.pipeline_stage);
+      if (running && !pollTimer) {
+        pollTimer = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`${API}/api/cases/${currentCaseId}/status`);
+            const status = await statusRes.json();
+            document.getElementById("stageBadge").innerHTML = stageBadgeHtml(status.stage);
+            if (["COMPLETE", "ERROR"].includes(status.stage)) {
+              clearInterval(pollTimer); pollTimer = null;
+              await refreshCase(); // Full refresh to get results
+            }
+          } catch (e) {
+            console.error("Poll error:", e);
+          }
+        }, 4000);
+      } else if (!running && pollTimer) {
+        clearInterval(pollTimer); pollTimer = null;
+      }
+
+      // Show results if complete
+      if (data.pipeline_stage === "COMPLETE") {
+        renderResults(data);
+      }
+    }
+
+    // ── Upload Doc ────────────────────────────────────────────────────────────────
+    async function uploadDoc() {
+      const file = document.getElementById("docFile").files[0];
+      const type = document.getElementById("docType").value;
+      if (!file) { alert("Select a file first"); return; }
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("doc_type", type);
+      const res = await fetch(`${API}/api/cases/${currentCaseId}/documents`, { method: "POST", body: fd });
+      if (res.ok) {
+        document.getElementById("docFile").value = "";
+        refreshCase();
+      } else {
+        alert("Upload failed");
+      }
+    }
+
+    // ── Save Primary Insights ─────────────────────────────────────────────────────
+    async function saveInsights() {
+      const succ = document.getElementById("piSucc").value;
+      const body = {
+        capacity_utilization_observed_pct: numOrNull("piCapObs"),
+        capacity_utilization_reported_pct: numOrNull("piCapRep"),
+        worker_count_observed: numOrNull("piWorkers"),
+        machinery_condition: valOrNull("piMachine"),
+        inventory_condition: valOrNull("piInv"),
+        management_response_quality: valOrNull("piMgmt"),
+        succession_plan_exists: succ === "" ? null : (succ === "true"),
+        promoter_skin_in_game: valOrNull("piSkin"),
+        additional_observations: document.getElementById("piObs").value,
+      };
+      const res = await fetch(`${API}/api/cases/${currentCaseId}/primary-insights`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) { alert("Site visit data saved ✓"); }
+      else { alert("Save failed"); }
+    }
+
+    function numOrNull(id) {
+      const v = document.getElementById(id).value;
+      return v === "" ? null : parseFloat(v);
+    }
+    function valOrNull(id) {
+      const v = document.getElementById(id).value;
+      return v === "" ? null : v;
+    }
+
+    // ── Start Analysis ────────────────────────────────────────────────────────────
+    async function startAnalysis() {
+      const res = await fetch(`${API}/api/cases/${currentCaseId}/analyze`, { method: "POST" });
+      const data = await res.json();
+      alert(data.message);
+      pollTimer = setInterval(refreshCase, 4000);
+      refreshCase();
+    }
+
+    // ── Render Results ────────────────────────────────────────────────────────────
+    function renderResults(data) {
+      const sb = data.score_breakdown || {};
+      const dec = data.decision || {};
+      const rf = data.research_findings || {};
+      const m = data.financial_metrics || {};
+
+      const scoreColor = sb.final_score >= 72 ? "ring-good" : sb.final_score >= 50 ? "ring-warn" : "ring-bad";
+      const decClass = `dec-${dec.recommendation || "PENDING"}`;
+
+      const ratioHtml = (label, val, goodFn) => {
+        const cls = val == null ? "rv-na" : (goodFn(val) ? "rv-good" : "rv-bad");
+        return `<div class="col-6 col-md-4 col-lg-3 mb-2">
+      <div class="ratio-box">
+        <div class="ratio-val ${cls}">${val != null ? val : "—"}</div>
+        <div class="text-muted" style="font-size:.75rem">${label}</div>
+      </div></div>`;
+      };
+
+      const flagsHtml = (data.risk_flags || []).map(f => `
+    <div class="flag-${f.severity}">
+      <strong>${f.severity}</strong> <span class="text-muted small">[${f.source}]</span><br>
+      ${f.description}
+    </div>`).join("") || '<div class="text-muted">No risk flags detected</div>';
+
+      const driversHtml = (sb.score_drivers || []).slice(0, 6).map(d => {
+        const pct = Math.abs(d.sub_score);
+        const barColor = d.direction === "positive" ? "#2e7d32" : d.direction === "negative" ? "#c62828" : "#9e9e9e";
+        return `<div class="mb-2">
+      <div class="d-flex justify-content-between small">
+        <span>${d.description}</span>
+        <span class="fw-semibold">${d.value}</span>
+      </div>
+      <div class="progress driver-bar">
+        <div class="progress-bar" style="width:${pct}%;background:${barColor}"></div>
+      </div>
+      <div class="text-muted" style="font-size:.72rem">
+        Sub-score: ${d.sub_score}/100 | Impact: ${d.impact > 0 ? "+" : ""}${d.impact} pts
+      </div>
+    </div>`;
+      }).join("");
+
+      const camBtn = data.cam_path
+        ? `<a class="btn btn-success" href="${API}/api/cases/${currentCaseId}/cam" target="_blank">
+         <i class="bi bi-file-earmark-word"></i> Download CAM
+       </a>`
+        : `<button class="btn btn-secondary" disabled>CAM not yet generated</button>`;
+
+      document.getElementById("resultsContent").innerHTML = `
+    <div class="row g-3">
+
+      <!-- Score Ring -->
+      <div class="col-md-4">
+        <div class="card p-4 text-center">
+          <div class="score-ring ${scoreColor}">${sb.final_score || '—'}</div>
+          <h5 class="fw-bold">${sb.risk_rating || '—'}</h5>
+          <div class="text-muted small">Composite Credit Score</div>
+          <hr>
+          <div class="row text-center g-2">
+            <div class="col-4">
+              <div class="fw-bold">${sb.financial_score || 0}</div>
+              <div class="text-muted" style="font-size:.72rem">Financial</div>
+            </div>
+            <div class="col-4">
+              <div class="fw-bold">${sb.research_score || 0}</div>
+              <div class="text-muted" style="font-size:.72rem">Research</div>
+            </div>
+            <div class="col-4">
+              <div class="fw-bold">${sb.primary_insight_score || 0}</div>
+              <div class="text-muted" style="font-size:.72rem">Primary</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Decision -->
+      <div class="col-md-4">
+        <div class="card p-4 ${decClass}">
+          <h6 class="fw-bold mb-1"><i class="bi bi-check2-circle"></i> Decision</h6>
+          <div class="fs-4 fw-bold mb-2">${dec.recommendation || 'PENDING'}</div>
+          ${dec.recommended_limit_cr != null ? `<div>Limit: <strong>₹${dec.recommended_limit_cr} Cr</strong></div>` : ''}
+          ${dec.mclr_spread_bps ? `<div>Rate: <strong>${dec.effective_rate_pct}%</strong> (MCLR+${dec.mclr_spread_bps}bps)</div>` : ''}
+          ${(dec.key_conditions || []).length ? `<hr><div class="small"><strong>Conditions:</strong><ul class="mb-0">${dec.key_conditions.map(c => `<li>${c}</li>`).join("")}</ul></div>` : ''}
+          ${(dec.rejection_reasons || []).length ? `<hr><div class="small"><strong>Reasons:</strong><ul class="mb-0">${dec.rejection_reasons.map(r => `<li>${r}</li>`).join("")}</ul></div>` : ''}
+          <div class="mt-3">${camBtn}</div>
+        </div>
+      </div>
+
+      <!-- Research -->
+      <div class="col-md-4">
+        <div class="card p-4">
+          <h6 class="fw-bold mb-2"><i class="bi bi-search"></i> Research</h6>
+          <div class="mb-1">News Risk: <span class="badge bg-${rf.news_risk_level === 'HIGH' ? 'danger' : rf.news_risk_level === 'MEDIUM' ? 'warning' : 'success'}">${rf.news_risk_level || '—'}</span></div>
+          <div class="small text-muted mb-2">${rf.news_summary || '—'}</div>
+          <div class="mb-1">Sector: <strong>${rf.sector || '—'}</strong> <span class="badge bg-${rf.sector_outlook === 'POSITIVE' ? 'success' : rf.sector_outlook === 'NEGATIVE' ? 'danger' : 'secondary'}">${rf.sector_outlook || '—'}</span></div>
+          <div class="mb-1">Promoter Score: <strong>${rf.promoter_integrity_score || '—'}/100</strong></div>
+          <div class="mb-1">Litigation Cases: <strong>${(rf.litigation_cases || []).length}</strong></div>
+          <div>Litigation Exposure: <strong>₹${rf.litigation_total_exposure_lakhs || 0}L</strong></div>
+        </div>
+      </div>
+
+      <!-- Financial Ratios -->
+      <div class="col-12">
+        <div class="card p-4">
+          <h6 class="fw-bold mb-3"><i class="bi bi-graph-up"></i> Financial Ratios</h6>
+          <div class="row g-2">
+            ${ratioHtml("DSCR", m.dscr, v => v >= 1.2)}
+            ${ratioHtml("Debt/Equity", m.debt_to_equity, v => v <= 2)}
+            ${ratioHtml("Current Ratio", m.current_ratio, v => v >= 1.2)}
+            ${ratioHtml("EBITDA Margin %", m.ebitda_margin_pct, v => v >= 10)}
+            ${ratioHtml("Revenue CAGR 3yr %", m.revenue_cagr_3yr, v => v >= 5)}
+            ${ratioHtml("Interest Coverage", m.interest_coverage, v => v >= 2)}
+            ${ratioHtml("GST/Bank Ratio", m.gst_bank_ratio, v => v >= 0.85 && v <= 1.15)}
+            ${ratioHtml("Bounce Rate", m.bounce_rate, v => v <= 0.05)}
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Flags -->
+      <div class="col-md-6">
+        <div class="card p-4">
+          <h6 class="fw-bold mb-3"><i class="bi bi-exclamation-triangle"></i> Risk Flags</h6>
+          ${flagsHtml}
+        </div>
+      </div>
+
+      <!-- Score Drivers -->
+      <div class="col-md-6">
+        <div class="card p-4">
+          <h6 class="fw-bold mb-3"><i class="bi bi-bar-chart"></i> Score Drivers</h6>
+          ${driversHtml}
+        </div>
+      </div>
+
+      <!-- Counterfactual -->
+      <div class="col-12">
+        <div class="card p-4">
+          <h6 class="fw-bold mb-2"><i class="bi bi-lightbulb"></i> AI Explainability</h6>
+          <p class="mb-0 text-muted" style="white-space:pre-wrap">${sb.counterfactual || sb.decision_explanation || '—'}</p>
+        </div>
+      </div>
+
+    </div>`;
+
+      // Switch to results tab
+      const tab = document.querySelector('[href="#tResults"]');
+      if (tab) bootstrap.Tab.getOrCreateInstance(tab).show();
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────────
+    loadCases();
+  </script>
+</body>
+
+</html>
